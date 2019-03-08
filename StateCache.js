@@ -3,9 +3,10 @@
   maxNum 最大缓存条数
   storageType 缓存类型
   lifecycle 缓存的生命周期
+  this.clearStorageFlag 执行componentWillUnmount时是否清除缓存的标记
  */
 const stateCache = (config) => {
-  console.log('stateCache');
+  console.log('use stateCache');
   return (Comp) => {
     const defaultConfig = {
       key: '',
@@ -16,24 +17,31 @@ const stateCache = (config) => {
     const warpConfig = { ...defaultConfig, ...config };
     class WrapComp extends Comp {
       componentWillMount() {
-        console.log('componentWillmount', this.getStorageDataItem());
         this.setState(this.getStorageDataItem());
-        super.componentWillMount();
+        if (super.componentWillMount) {
+          super.componentWillMount();
+        }
       }
 
       componentDidUpdate() {
         if (warpConfig.lifecycle.includes('componentDidUpdate')) {
-          this.storeState();
+          this.storeState.call(this, null);
         }
-        super.componentDidUpdate();
+        if (super.componentDidUpdate) {
+          super.componentDidUpdate();
+        }
       }
 
       componentWillUnmount() {
         if (warpConfig.lifecycle.includes('componentWillUnmount')) {
-          this.storeState();
+          this.storeState.call(this, null);
         }
-        super.componentWillUnmount();
+        if (super.componentWillUnmount) {
+          super.componentWillUnmount();
+        }
       }
+
+      // 存储数据
       storeState() {
         const hashQueryName = this.getQueryName();
         const storageData = this.getStorageData();
@@ -49,11 +57,13 @@ const stateCache = (config) => {
         const storageDataStr = window[warpConfig.storageType].getItem(warpConfig.key);
         return (storageDataStr && JSON.parse(storageDataStr)) ? JSON.parse(storageDataStr) : {};
       }
+
       // 获取key的storage中，hashname对应的item
       getStorageDataItem() {
         const hashQueryName = this.getQueryName();
         return this.getStorageData()[hashQueryName] || {};
       }
+
       // 获取hash的key值
       getQueryName() {
         let res = '$a';
@@ -61,6 +71,10 @@ const stateCache = (config) => {
           res = `$${this.getQuery()[warpConfig.hashQueryName]}`;
         }
         return res;
+      }
+
+      clearState() {
+        window[warpConfig.storageType].removeItem(warpConfig.key);
       }
     }
     if (!config.key) {
